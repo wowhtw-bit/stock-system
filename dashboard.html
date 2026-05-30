@@ -728,7 +728,8 @@
    재고관리 대시보드 - 클라이언트 JS
    ============================================================ */
 const LS_KEY = 'inv_apiUrl_v1';
-let apiUrl = localStorage.getItem(LS_KEY) || '';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycby7h81rGdwmBEAxjzx_mgitmIY_1IRjs5kpJ2zixLOZs_eDoQe-16n2mLwvzhGE0Sjb7w/exec';
+let apiUrl = localStorage.getItem(LS_KEY) || DEFAULT_API_URL;
 let state = { materials: [], products: [], bom: [], productionLog: [], stockLog: [], settings: {} };
 let selectedProductId = null;
 let activeTab = 'materials';
