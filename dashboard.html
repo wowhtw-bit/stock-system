@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>재고관리 대시보드</title>
+<style>
+  :root{
+    --primary:#2E5BBA; --primary-dark:#1E3F86;
+    --danger:#DC3545; --danger-soft:#FEEBEE;
+    --warning:#F59E0B; --warning-soft:#FEF3C7;
+    --success:#16A34A; --success-soft:#DCFCE7;
+    --bg:#F5F7FA; --card:#FFFFFF; --border:#E5E7EB; --border-strong:#D1D5DB;
+    --text:#111827; --muted:#6B7280; --subtle:#9CA3AF;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","맑은 고딕","Malgun Gothic",sans-serif;
+    font-size:14px;line-height:1.5}
+  button{font-family:inherit;font-size:14px;cursor:pointer;border:1px solid var(--border-strong);
+    background:#fff;padding:6px 12px;border-radius:6px;color:var(--text)}
+  button:hover{background:#f9fafb}
+  button.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+  button.primary:hover{background:var(--primary-dark)}
+  button.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+  button.danger:hover{filter:brightness(.92)}
+  button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:4px 8px}
+  button.ghost:hover{background:#f3f4f6;color:var(--text)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--border-strong);
+    border-radius:6px;background:#fff;color:var(--text);width:100%}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--primary);outline-offset:-1px;border-color:transparent}
+  textarea{min-height:60px;resize:vertical}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:500}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+  th{background:#F9FAFB;font-weight:600;color:var(--muted);font-size:12px;text-transform:none}
+  tr:hover td{background:#FAFBFC}
+  tr.row-danger td{background:var(--danger-soft)}
+  tr.row-warning td{background:var(--warning-soft)}
+  tr.row-canceled td{opacity:.45;text-decoration:line-through}
+
+  .layout{max-width:1280px;margin:0 auto;padding:24px}
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .header h1{margin:0;font-size:22px}
+  .header .toolbar{display:flex;gap:8px;align-items:center}
+  .alert-bar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;
+    margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .alert-bar.has-alerts{background:var(--danger-soft);border-color:#FCA5A5}
+  .alert-bar.has-warnings:not(.has-alerts){background:var(--warning-soft);border-color:#FCD34D}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600}
+  .badge.danger{background:var(--danger);color:#fff}
+  .badge.warning{background:var(--warning);color:#fff}
+  .badge.muted{background:#E5E7EB;color:#374151}
+  .badge.success{background:var(--success);color:#fff}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .tab{padding:10px 16px;border:none;background:transparent;border-bottom:2px solid transparent;
+    color:var(--muted);font-weight:500;border-radius:0;font-size:14px}
+  .tab:hover{color:var(--text);background:transparent}
+  .tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px}
+  .card h3{margin:0 0 12px 0;font-size:16px}
+  .card .desc{color:var(--muted);font-size:13px;margin-bottom:14px}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .row{display:flex;gap:10px;align-items:flex-end}
+  .row > *{flex:1}
+  .row .shrink{flex:0 0 auto}
+
+  .pct-bar{display:inline-block;width:80px;height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:6px}
+  .pct-fill{height:100%;background:var(--success);transition:width .2s}
+  .pct-fill.warning{background:var(--warning)}
+  .pct-fill.danger{background:var(--danger)}
+
+  .editable{background:transparent;border:1px solid transparent;padding:4px 6px;border-radius:4px;width:90px}
+  .editable:hover{border-color:var(--border)}
+  .editable:focus{border-color:var(--primary);outline:none;background:#fff}
+  .text-muted{color:var(--muted)}
+  .text-danger{color:var(--danger);font-weight:600}
+  .text-warning{color:var(--warning);font-weight:600}
+  .text-success{color:var(--success)}
+  .text-right{text-align:right}
+  .text-center{text-align:center}
+  .mt-2{margin-top:10px}.mt-3{margin-top:14px}.mt-4{margin-top:20px}
+  .mb-2{margin-bottom:10px}.gap-2{gap:10px}
+  .flex{display:flex}.flex-col{display:flex;flex-direction:column}.items-center{align-items:center}.justify-between{justify-content:space-between}
+  .hide{display:none!important}
+
+  .setup{max-width:680px;margin:60px auto;background:#fff;border:1px solid var(--border);border-radius:12px;padding:32px}
+  .setup h1{margin-top:0}
+  .setup ol{padding-left:18px;color:var(--muted)}
+  .setup ol li{margin-bottom:10px}
+  .setup .url-input{display:flex;gap:8px;margin-top:14px}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+  .modal{background:#fff;border-radius:12px;padding:24px;max-width:680px;width:90%;max-height:85vh;overflow:auto}
+  .modal h2{margin-top:0;font-size:18px}
+
+  .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--text);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;max-width:380px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);animation:slideIn .2s}
+  .toast.success{background:var(--success)}
+  .toast.error{background:var(--danger)}
+  @keyframes slideIn{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;
+    border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .empty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+  /* ============================================================
+     모바일 반응형 (≤720px) — 조회 + 생산입력 + 사진촬영 최적화
+     ============================================================ */
+  @media (max-width: 720px) {
+    body { font-size: 15px; }
+    .layout { padding: 12px; }
+
+    /* 헤더 */
+    .header { flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+    .header h1 { font-size: 18px; flex: 1 0 60%; }
+    .header .toolbar { flex-wrap: wrap; gap: 6px; width: 100%; justify-content: flex-end; }
+    .header .toolbar #lastSync { font-size: 11px; flex: 1; }
+
+    /* 알림 바 */
+    .alert-bar { padding: 12px; font-size: 13px; gap: 8px; border-radius: 8px; }
+
+    /* 탭 - 가로 스크롤 */
+    .tabs {
+      overflow-x: auto; flex-wrap: nowrap !important;
+      margin: 0 -12px 14px; padding: 0 12px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { white-space: nowrap; flex-shrink: 0; padding: 11px 14px; font-size: 13px; }
+
+    /* 카드/폼 */
+    .card { padding: 14px; border-radius: 10px; margin-bottom: 12px; }
+    .card h3 { font-size: 15px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr !important; }
+    .row { flex-direction: column; align-items: stretch; }
+    .row > * { flex: none; width: 100%; }
+    .row .shrink { align-self: stretch; }
+
+    /* 입력/버튼 (44px 터치 타깃, 16px 폰트로 iOS 자동 줌 방지) */
+    button { min-height: 44px; padding: 10px 14px; font-size: 14px; }
+    button.ghost { min-height: auto; padding: 6px 10px; }
+    input, select, textarea { font-size: 16px; min-height: 44px; padding: 10px 12px; }
+    .editable { width: 100% !important; }
+
+    /* 모달 풀스크린 */
+    .modal-bg { padding: 0; align-items: stretch; }
+    .modal { width: 100%; max-width: 100%; max-height: 100vh; height: 100vh; border-radius: 0; padding: 18px; overflow-y: auto; }
+
+    /* 재료 현황판 - 카드 그리드로 전환 */
+    #materialsTable, #materialsTable tbody { display: block; width: 100%; }
+    #materialsTable thead { display: none; }
+    #materialsTable tr {
+      display: grid;
+      grid-template-columns: 84px 1fr;
+      gap: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      padding: 14px;
+      background: #fff !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    }
+    #materialsTable tr.row-danger  { background: var(--danger-soft) !important;  border-color: #FCA5A5; }
+    #materialsTable tr.row-warning { background: var(--warning-soft) !important; border-color: #FCD34D; }
+    #materialsTable td {
+      display: flex; padding: 0; border: none;
+      background: transparent !important;
+      align-items: center; min-height: 0;
+    }
+    #materialsTable td::before {
+      content: attr(data-label);
+      width: 64px; flex-shrink: 0;
+      color: var(--muted); font-size: 12px; font-weight: 500;
+    }
+    /* 사진: 좌측 1열 row 1~2 차지 */
+    #materialsTable td:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; justify-content: center; align-self: start; }
+    #materialsTable td:nth-child(1)::before { display: none; }
+    /* ID */
+    #materialsTable td:nth-child(2) { grid-column: 2; grid-row: 1; font-size: 11px; color: var(--muted); }
+    #materialsTable td:nth-child(2)::before { display: none; }
+    /* 재료명 */
+    #materialsTable td:nth-child(3) { grid-column: 2; grid-row: 2; }
+    #materialsTable td:nth-child(3)::before { display: none; }
+    #materialsTable td:nth-child(3) input { font-size: 17px; font-weight: 600; padding: 4px 0; min-height: 32px; border-color: transparent; }
+    #materialsTable td:nth-child(3) input:focus { border-color: var(--primary); padding: 4px 8px; }
+    /* 단위/현재재고/임계수량/상태/메모 — 전체 너비, 라벨 표시 */
+    #materialsTable td:nth-child(n+4):nth-child(-n+8) {
+      grid-column: 1 / -1; padding: 8px 0;
+      border-top: 1px solid var(--border);
+    }
+    #materialsTable td:nth-child(4) input { width: 60px !important; }
+    #materialsTable td:nth-child(5) input,
+    #materialsTable td:nth-child(6) input { width: 100px !important; font-size: 17px; font-weight: 500; }
+    #materialsTable td:nth-child(8) input { flex: 1; }
+    /* 삭제 버튼 */
+    #materialsTable td:nth-child(9) { grid-column: 1 / -1; justify-content: flex-end; padding-top: 4px; }
+    #materialsTable td:nth-child(9)::before { display: none; }
+
+    .mat-thumb { width: 76px; height: 76px; }
+    .mat-thumb-empty { font-size: 28px; }
+
+    /* BOM 편집 */
+    .bom-row { grid-template-columns: 1fr 80px auto; gap: 6px; }
+
+    /* 생산입력/입고입력 폼 */
+    .card[style*="max-width:640px"] { max-width: 100% !important; }
+
+    /* 생산 미리보기 테이블 — 가로 스크롤 */
+    #prodPreview table { font-size: 12px; }
+    #prodPreview td, #prodPreview th { padding: 6px 4px; }
+
+    /* 이력 테이블 — 카드 그리드 */
+    #historyTable, #historyTable tbody { display: block; }
+    #historyTable thead { display: none; }
+    #historyTable tr {
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      padding: 12px;
+      background: #fff !important;
+    }
+    #historyTable td {
+      display: flex; padding: 4px 0; border: none;
+      background: transparent !important;
+    }
+    #historyTable td::before {
+      content: attr(data-label);
+      width: 56px; flex-shrink: 0;
+      color: var(--muted); font-size: 12px; font-weight: 500;
+    }
+    #historyTable td[data-label="액션"] { justify-content: flex-end; padding-top: 6px; }
+    #historyTable td[data-label="액션"]::before { display: none; }
+
+    /* 가이드 — 가로 폭 줄이기 */
+    .guide { max-width: 100%; }
+    .guide .toc { gap: 6px; }
+    .guide .toc a { padding: 5px 10px; font-size: 12px; }
+
+    /* 초기 설정 화면 */
+    .setup { margin: 20px auto; padding: 20px; border-radius: 0; min-height: calc(100vh - 40px); }
+
+    /* 이미지 미리보기 모달 — 버튼 더 잘 보이게 */
+    .img-preview-btns { top: 12px; right: 12px; flex-wrap: wrap; }
+  }
+
+  /* ============================================================
+     초소형 화면 (≤380px, 구형 폰)
+     ============================================================ */
+  @media (max-width: 380px) {
+    #materialsTable tr { grid-template-columns: 70px 1fr; padding: 12px; }
+    .mat-thumb { width: 64px; height: 64px; }
+    .header h1 { font-size: 16px; }
+    .tab { font-size: 12px; padding: 10px 12px; }
+  }
+
+  /* Material thumbnail */
+  .mat-thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border);background:#F3F4F6;display:inline-block;vertical-align:middle}
+  .mat-thumb-empty{display:inline-flex;align-items:center;justify-content:center;color:var(--subtle);font-size:20px;font-weight:300}
+  .mat-thumb-empty:hover{background:#E5E7EB;color:var(--primary);border-color:var(--primary)}
+  .img-preview-bg{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:300;cursor:zoom-out}
+  .img-preview-bg img{max-width:92vw;max-height:88vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .img-preview-btns{position:absolute;top:16px;right:16px;display:flex;gap:6px;cursor:auto}
+  .modal-preview{max-width:100%;max-height:180px;border-radius:6px;margin-top:8px;border:1px solid var(--border)}
+
+  /* Guide */
+  .guide{max-width:840px}
+  .guide .step-num{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;
+    align-items:center;justify-content:center;font-weight:700;font-size:13px;margin-right:8px;flex-shrink:0}
+  .guide h3{display:flex;align-items:center;font-size:17px;margin:0 0 10px 0}
+  .guide p{color:#374151;margin:8px 0}
+  .guide .term{background:#EEF2FF;color:var(--primary-dark);padding:1px 6px;border-radius:4px;font-weight:600}
+  .guide kbd{background:#F3F4F6;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:4px;
+    padding:1px 6px;font-size:12px;font-family:inherit;color:#374151}
+  .guide .tip{background:#FFFBEB;border-left:3px solid var(--warning);padding:10px 14px;border-radius:6px;margin:10px 0;color:#78350F}
+  .guide .note{background:#EFF6FF;border-left:3px solid var(--primary);padding:10px 14px;border-radius:6px;margin:10px 0;color:#1E3A8A}
+  .guide .example{background:#F9FAFB;border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin:10px 0;font-size:13px}
+  .guide ol,.guide ul{padding-left:22px;color:#374151}
+  .guide ol li,.guide ul li{margin:4px 0}
+  .guide .faq{border-bottom:1px solid var(--border);padding:12px 0}
+  .guide .faq:last-child{border-bottom:0}
+  .guide .faq .q{font-weight:600;color:#111827}
+  .guide .faq .a{color:#4B5563;margin-top:4px}
+  .guide .toc{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 0}
+  .guide .toc a{padding:6px 12px;background:#F3F4F6;border-radius:99px;text-decoration:none;color:#374151;font-size:13px}
+  .guide .toc a:hover{background:var(--primary);color:#fff}
+
+  /* BOM editor row */
+  .bom-row{display:grid;grid-template-columns:1fr 120px 40px;gap:8px;align-items:center;margin-bottom:6px}
+  .summary-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .summary-list .badge{cursor:default}
+</style>
+</head>
+<body>
+
+<!-- 초기 설정 화면 -->
+<div id="setupView" class="hide">
+  <div class="setup">
+    <h1>🛠️ 재고관리 대시보드 - 초기 설정</h1>
+    <p class="text-muted">최초 1회 Apps Script 웹앱 URL을 등록해야 합니다.</p>
+    <ol>
+      <li>구글시트 (재고관리_템플릿)를 열어주세요.</li>
+      <li><b>확장 프로그램 → Apps Script</b> 열기</li>
+      <li>제공해드린 <code>apps_script.gs</code> 코드를 전체 복사해서 붙여넣고 저장</li>
+      <li>오른쪽 위 <b>배포 → 새 배포</b> 클릭
+        <ul>
+          <li>유형: <b>웹 앱</b></li>
+          <li>다음 사용자 인증 정보로 실행: <b>나</b></li>
+          <li>액세스 권한: <b>누구나</b> (또는 조직 내)</li>
+        </ul>
+      </li>
+      <li>발급된 <b>웹 앱 URL</b>을 아래에 붙여넣고 [저장]</li>
+    </ol>
+    <label>웹 앱 URL</label>
+    <div class="url-input">
+      <input id="setupUrl" placeholder="https://script.google.com/macros/s/AKfyc.../exec">
+      <button class="primary shrink" onclick="saveSetupUrl()">저장 & 연결</button>
+    </div>
+    <div id="setupMsg" class="mt-3 text-muted"></div>
+  </div>
+</div>
+
+<!-- 메인 화면 -->
+<div id="mainView" class="layout hide">
+  <div class="header">
+    <h1>📦 재고관리 대시보드</h1>
+    <div class="toolbar">
+      <span id="lastSync" class="text-muted" style="font-size:12px"></span>
+      <button onclick="refresh()" id="refreshBtn">🔄 새로고침</button>
+    </div>
+  </div>
+
+  <!-- 상단 알림 바 -->
+  <div id="alertBar" class="alert-bar">
+    <span class="badge muted">로딩 중…</span>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <button class="tab active" data-tab="materials" onclick="switchTab('materials')">재료 현황</button>
+    <button class="tab" data-tab="products" onclick="switchTab('products')">제품 & BOM</button>
+    <button class="tab" data-tab="production" onclick="switchTab('production')">생산 입력</button>
+    <button class="tab" data-tab="stock" onclick="switchTab('stock')">입고/조정</button>
+    <button class="tab" data-tab="history" onclick="switchTab('history')">이력</button>
+    <button class="tab" data-tab="guide" onclick="switchTab('guide')">❓ 사용 가이드</button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">설정</button>
+  </div>
+
+  <!-- 재료 현황 탭 -->
+  <div id="tab-materials" class="tab-pane">
+    <div class="card">
+      <div class="flex justify-between items-center mb-2">
+        <h3 style="margin:0">재료 목록</h3>
+        <button class="primary" onclick="openAddMaterialModal()">+ 재료 추가</button>
+      </div>
+      <p class="desc">현재재고가 임계수량보다 적으면 빨간 행으로 표시됩니다. 셀을 직접 수정 후 Enter 또는 다른 곳 클릭 시 자동 저장됩니다.</p>
+      <div style="overflow-x:auto">
+        <table id="materialsTable">
+          <thead>
+            <tr>
+              <th style="width:48px">사진</th>
+              <th>ID</th><th>재료명</th><th>단위</th>
+              <th class="text-right">현재재고</th>
+              <th class="text-right">임계수량</th>
+              <th>상태</th><th>메모</th><th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 제품 & BOM 탭 -->
+  <div id="tab-products" class="tab-pane hide">
+    <div class="grid-2">
+      <div class="card">
+        <div class="flex justify-between items-center mb-2">
+          <h3 style="margin:0">제품 목록</h3>
+          <button class="primary" onclick="openAddProductModal()">+ 제품 추가</button>
+        </div>
+        <p class="desc">제품을 클릭하면 오른쪽에 BOM(자재명세)이 표시됩니다.</p>
+        <table id="productsTable">
+          <thead><tr><th>ID</th><th>제품명</th><th>메모</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>BOM (자재명세서)</h3>
+        <div id="bomEditor"><p class="empty">왼쪽에서 제품을 선택하세요.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 생산 입력 탭 -->
+  <div id="tab-production" class="tab-pane hide">
+    <div class="card" style="max-width:640px">
+      <h3>제품 생산 기록</h3>
+      <p class="desc">제품과 수량을 입력하면 매핑된 재료가 자동 차감됩니다.</p>
+      <div class="grid-2">
+        <div>
+          <label>제품</label>
+          <select id="prodProduct"></select>
+        </div>
+        <div>
+          <label>생산 수량</label>
+          <input id="prodQty" type="number" min="1" value="1">
+        </div>
+      </div>
+      <div class="mt-3">
+        <label>메모 (선택)</label>
+        <input id="prodMemo" placeholder="예: 오전 생산분">
+      </div>
+      <div id="prodPreview" class="mt-3"></div>
+      <div class="mt-3 flex gap-2">
+        <button class="primary" onclick="submitProduction(false)">생산 기록 추가</button>
+        <button class="ghost" onclick="updateProductionPreview()">예상 차감 미리보기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 입고/조정 탭 -->
+  <div id="tab-stock" class="tab-pane hide">
+    <div class="card" style="max-width:640px">
+      <h3>재료 입고 / 수동 조정</h3>
+      <p class="desc">입고 시 (+) 수량, 폐기/오차 보정은 (-) 수량으로 입력하세요.</p>
+      <div class="grid-2">
+        <div>
+          <label>재료</label>
+          <select id="stockMaterial"></select>
+        </div>
+        <div>
+          <label>변동 수량 (+입고 / -조정)</label>
+          <input id="stockAmount" type="number" value="0">
+        </div>
+      </div>
+      <div class="mt-3 grid-2">
+        <div>
+          <label>종류</label>
+          <select id="stockType">
+            <option value="입고">입고 (구매/도착)</option>
+            <option value="조정">조정 (오차 보정/폐기)</option>
+          </select>
+        </div>
+        <div>
+          <label>메모 (선택)</label>
+          <input id="stockMemo" placeholder="예: A사 발주분 입고">
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="primary" onclick="submitStock()">기록 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 이력 탭 -->
+  <div id="tab-history" class="tab-pane hide">
+    <div class="card">
+      <div class="flex justify-between items-center mb-2">
+        <h3 style="margin:0">전체 이력</h3>
+        <div class="flex gap-2">
+          <select id="histType" onchange="renderHistory()">
+            <option value="all">전체</option>
+            <option value="production">생산만</option>
+            <option value="stock">입고/조정만</option>
+          </select>
+          <select id="histDays" onchange="renderHistory()">
+            <option value="7">최근 7일</option>
+            <option value="30" selected>최근 30일</option>
+            <option value="90">최근 90일</option>
+            <option value="0">전체</option>
+          </select>
+        </div>
+      </div>
+      <table id="historyTable">
+        <thead>
+          <tr><th>일시</th><th>구분</th><th>대상</th><th class="text-right">수량</th><th>메모</th><th>상태</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 사용 가이드 탭 -->
+  <div id="tab-guide" class="tab-pane hide">
+    <div class="card guide">
+      <h3>👋 환영합니다 - 재고관리 대시보드</h3>
+      <p>이 대시보드는 <span class="term">제품을 만들 때 사용되는 재료의 재고를 자동으로 관리</span>하기 위한 시스템입니다. 제품 생산 수량만 입력하면 매핑된 재료가 알아서 차감되고, 부족한 재료는 빨간 배지로 알려드립니다.</p>
+      <div class="note">💾 모든 데이터는 본인 구글시트에 저장됩니다. 이 페이지는 시트를 읽고 쓰는 창일 뿐입니다.</div>
+      <p><b>빠른 이동:</b></p>
+      <div class="toc">
+        <a href="#g-start">처음 한 번</a>
+        <a href="#g-material">재료 관리</a>
+        <a href="#g-product">제품 & BOM</a>
+        <a href="#g-production">생산 입력</a>
+        <a href="#g-stock">입고/조정</a>
+        <a href="#g-history">취소/이력</a>
+        <a href="#g-alert">알림 이해하기</a>
+        <a href="#g-faq">자주 묻는 질문</a>
+      </div>
+    </div>
+
+    <div class="card guide" id="g-start">
+      <h3><span class="step-num">0</span>처음 한 번만 하면 되는 일</h3>
+      <p>아래 3단계 순서대로만 등록해두면 이후로는 [생산 입력] 한 화면만 쓰면 됩니다.</p>
+      <ol>
+        <li><b>재료 등록</b> — 가지고 있는 모든 재료를 [재료 현황] 탭에 추가</li>
+        <li><b>제품 등록 + BOM 매핑</b> — [제품 & BOM] 탭에서 제품을 만들고, 그 제품 1개를 만들 때 들어가는 재료들을 지정</li>
+        <li><b>생산 시작</b> — 이후로는 [생산 입력] 탭에서 "어떤 제품을 몇 개 만들었다"만 입력</li>
+      </ol>
+    </div>
+
+    <div class="card guide" id="g-material">
+      <h3><span class="step-num">1</span>재료 관리</h3>
+      <p>[재료 현황] 탭 → <kbd>+ 재료 추가</kbd> 클릭 → 항목을 채우고 [추가].</p>
+      <p><b>입력 항목 의미</b>:</p>
+      <ul>
+        <li><b>재료명</b>: 로제트 리본, 키링고리 같이 한눈에 알아볼 이름</li>
+        <li><b>단위</b>: 셀 수 있는 거면 <kbd>개</kbd>, 길이는 <kbd>m</kbd> 또는 <kbd>cm</kbd>, 무게는 <kbd>g</kbd></li>
+        <li><b>현재재고</b>: 지금 가지고 있는 수량</li>
+        <li><b>임계수량</b>: <span class="term">현재재고가 이 값 미만으로 떨어지면 빨간 알림</span>이 뜹니다. 단위는 그 재료의 단위와 동일 (m, 개, g 등)</li>
+        <li><b>메모</b>: 색상/규격/공급처 등 자유 메모</li>
+        <li><b>사진</b>: 한눈에 알아보기 위한 대표 이미지 (선택)</li>
+      </ul>
+      <div class="example">
+        <b>예시</b>: <code>로제트 리본</code> / 단위 <code>m</code> / 현재재고 <code>100</code> / 임계수량 <code>20</code><br>
+        → 재고가 20m 미만으로 떨어지면 <span class="badge danger">부족</span> 빨간 알림이 표시됩니다.
+      </div>
+      <p><b>사진 관리</b>:</p>
+      <ul>
+        <li>재료 추가 모달에서 [파일 선택]으로 PC에서 업로드 (자동으로 800px로 줄여 저장됨)</li>
+        <li>이미 등록된 재료는 테이블의 <span style="display:inline-flex;width:24px;height:24px;border-radius:4px;border:1px solid var(--border-strong);align-items:center;justify-content:center;color:var(--muted);font-weight:300">+</span> 박스 클릭으로 추가</li>
+        <li>섬네일 클릭 → 큰 미리보기에서 [교체] / [삭제] 가능</li>
+        <li>사진은 본인 구글드라이브의 <code>재고관리_이미지</code> 폴더에 저장됨</li>
+      </ul>
+      <p><b>현재재고 / 임계수량 수정</b>: 테이블 셀을 직접 클릭해서 숫자를 바꾸고 다른 곳을 클릭하면 자동 저장됩니다.</p>
+      <div class="tip">💡 임계수량은 "이 정도까지 떨어지면 발주해야 한다"는 안전 라인으로 정하세요. 발주 리드타임(주문 → 도착)이 길수록 임계수량을 크게 잡는 게 안전합니다.</div>
+    </div>
+
+    <div class="card guide" id="g-product">
+      <h3><span class="step-num">2</span>제품 & BOM 등록</h3>
+      <p><span class="term">BOM (Bill of Materials)</span>은 자재명세서입니다. <b>제품 1개를 만들 때 들어가는 재료의 목록과 각각의 소요량</b>이에요.</p>
+      <div class="example">
+        <b>예시 — 로제트 키링 1개의 BOM</b><br>
+        · 로제트 리본 0.3m<br>
+        · 키링고리 1개<br>
+        · 글루건 스틱 0.5g
+      </div>
+      <p><b>등록 방법</b>:</p>
+      <ol>
+        <li>[제품 & BOM] 탭 → <kbd>+ 제품 추가</kbd>로 제품을 먼저 생성</li>
+        <li>왼쪽 제품 목록에서 방금 만든 제품 클릭</li>
+        <li>오른쪽 BOM 영역에서 <kbd>+ 재료 추가</kbd>로 재료를 하나씩 추가하고 <b>1개당 소요량</b> 입력</li>
+        <li><kbd>BOM 저장</kbd> 클릭</li>
+      </ol>
+      <div class="tip">💡 한 재료가 여러 제품에 공통으로 들어가도 됩니다. 각 제품마다 BOM에 같은 재료를 추가하기만 하면 됩니다.</div>
+      <p><b>제품 종류 예시</b>: 같은 로제트 키링이라도 "기본형"과 "글리터 추가형"을 별도 제품으로 등록하면 생산 시 BOM 차이가 자동으로 반영됩니다.</p>
+    </div>
+
+    <div class="card guide" id="g-production">
+      <h3><span class="step-num">3</span>생산 기록하기 (가장 자주 쓸 기능)</h3>
+      <p>매일 가장 많이 사용하게 될 화면입니다. [생산 입력] 탭에서:</p>
+      <ol>
+        <li>드롭다운에서 만든 <b>제품 선택</b></li>
+        <li><b>생산 수량</b> 입력 (예: 10)</li>
+        <li>아래의 <b>예상 차감 미리보기</b>에서 어떤 재료가 얼마씩 빠질지 확인</li>
+        <li>괜찮으면 <kbd>생산 기록 추가</kbd> 클릭</li>
+      </ol>
+      <p>→ BOM에 매핑된 모든 재료가 (1개당 소요량 × 생산수량)만큼 자동 차감되고, [재료 현황]의 수량이 업데이트됩니다.</p>
+      <div class="tip">⚠ 재료가 부족할 경우 차감 시도 시 경고가 뜹니다. 그래도 강행하면 마이너스 재고로 기록되니, 보통은 먼저 입고를 등록한 뒤 생산을 입력하세요.</div>
+    </div>
+
+    <div class="card guide" id="g-stock">
+      <h3><span class="step-num">4</span>입고 / 조정</h3>
+      <p>재료가 새로 들어왔거나 실물과 시스템 수량이 안 맞을 때 [입고/조정] 탭에서 기록합니다.</p>
+      <ul>
+        <li><b>입고</b> (재료 도착): 변동 수량을 <b>양수(+)</b>로, 종류는 <kbd>입고</kbd></li>
+        <li><b>조정</b> (분실/파손/오차 보정): 변동 수량을 <b>음수(-)</b>로, 종류는 <kbd>조정</kbd></li>
+      </ul>
+      <div class="example">
+        <b>예시</b>: 리본 50m 입고 → 재료 선택 <code>로제트 리본</code>, 변동 수량 <code>+50</code>, 종류 <kbd>입고</kbd>, 메모 <code>A사 발주분</code>
+      </div>
+    </div>
+
+    <div class="card guide" id="g-history">
+      <h3><span class="step-num">5</span>잘못 입력했을 때 (이력 & 취소)</h3>
+      <p>실수로 잘못 입력했다면 [이력] 탭으로 가서 해당 줄의 <kbd>취소</kbd> 버튼을 누르면 됩니다.</p>
+      <ul>
+        <li>생산 기록을 취소하면 → 차감되었던 재료가 자동 복원</li>
+        <li>입고 기록을 취소하면 → 늘어났던 재료가 자동 감소</li>
+        <li>취소된 기록은 회색 취소선으로 표시되며 시트에는 남아 있음 (감사 추적용)</li>
+      </ul>
+      <p>날짜별 조회는 상단의 <kbd>최근 7일/30일/90일/전체</kbd> 필터로 가능합니다.</p>
+    </div>
+
+    <div class="card guide" id="g-alert">
+      <h3><span class="step-num">6</span>알림 읽는 법</h3>
+      <p>상단 알림 바와 재료 테이블 행에 표시되는 배지의 의미:</p>
+      <ul>
+        <li><span class="badge danger">🔴 부족</span> — 현재재고 &lt; 임계수량. <b>즉시 발주 필요.</b></li>
+        <li><span class="badge warning">⚠ 주의</span> — 현재재고 &lt; 임계수량 × 2. 슬슬 발주 고려.</li>
+        <li><span class="badge success">✓ 정상</span> — 임계수량의 2배 이상. 충분히 여유 있음.</li>
+        <li><span class="badge danger">소진</span> — 재고 0 이하. 생산 불가.</li>
+        <li><span class="badge muted">미설정</span> — 임계수량이 0이거나 미입력. 알림 비활성화.</li>
+      </ul>
+      <div class="example">
+        예: 단위 <code>m</code>, 현재재고 <code>15</code>, 임계수량 <code>20</code> → 15 &lt; 20 이므로 <span class="badge danger">부족</span><br>
+        예: 현재재고 <code>30</code>, 임계수량 <code>20</code> → 20 ≤ 30 &lt; 40 이므로 <span class="badge warning">주의</span><br>
+        예: 현재재고 <code>50</code>, 임계수량 <code>20</code> → 50 ≥ 40 이므로 <span class="badge success">정상</span>
+      </div>
+    </div>
+
+    <div class="card guide" id="g-faq">
+      <h3>❓ 자주 묻는 질문</h3>
+
+      <div class="faq">
+        <div class="q">Q. 다른 분이 대시보드를 보려면?</div>
+        <div class="a">A. <code>dashboard.html</code> 파일을 공유 폴더(드롭박스/구글드라이브/원드라이브)에 두거나 깃허브 페이지에 호스팅하면 같은 URL로 접근할 수 있습니다. 처음 한 번 [설정] 탭에 동일한 웹앱 URL을 입력하면 그 사람의 브라우저에 저장됩니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 사진은 어디에 저장되나요?</div>
+        <div class="a">A. 본인 구글드라이브 최상위의 <code>재고관리_이미지</code> 폴더에 자동 저장됩니다. 폴더는 첫 업로드 때 만들어집니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 구글시트의 데이터를 직접 수정해도 되나요?</div>
+        <div class="a">A. Materials, Products, BOM, Settings 시트는 직접 수정해도 됩니다 (긴급 시). 단 ProductionLog, StockLog는 대시보드에서만 추가/취소하세요 — 재고 자동 차감/복원 로직과 짝이 안 맞으면 수치가 어긋날 수 있습니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 실수로 시트의 데이터를 잘못 건드렸어요.</div>
+        <div class="a">A. 구글시트는 모든 편집 이력이 자동 저장됩니다. 시트 상단 메뉴 <b>파일 → 버전 기록 → 버전 기록 보기</b>에서 이전 시점으로 복원할 수 있습니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 화면에 최신 데이터가 안 보입니다.</div>
+        <div class="a">A. 우상단 <kbd>🔄 새로고침</kbd> 버튼을 누르면 시트에서 최신 데이터를 다시 가져옵니다. 시트를 다른 사람이 동시에 수정 중이라면 변경 후 새로고침해야 보입니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 임계수량은 모든 재료가 같아야 하나요?</div>
+        <div class="a">A. 아니요. 재료마다 다릅니다. [재료 현황] 테이블의 임계수량 셀을 직접 수정하면 그 재료에만 적용됩니다. 신규 추가 시 기본값은 [설정] 탭에서 조정 가능합니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 임계수량은 어떻게 정하면 좋나요?</div>
+        <div class="a">A. <b>발주 → 도착까지 걸리는 일수 × 일평균 소비량</b> 정도가 안전한 기준입니다. 예: 리본을 평균 하루 5m 쓰고 발주 도착에 3일 걸리면, 임계수량을 15~20m 정도로 두면 재고가 떨어지기 전에 알림을 받고 발주할 수 있습니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 한 재료가 여러 제품에 들어가요. 따로 등록해야 하나요?</div>
+        <div class="a">A. 재료는 한 번만 등록하면 됩니다. 각 제품의 BOM에 같은 재료를 추가하기만 하면, 어떤 제품을 생산하든 그 재료가 공통으로 차감됩니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 재료를 삭제하려는데 "BOM에서 사용 중"이라고 나옵니다.</div>
+        <div class="a">A. 그 재료를 사용하는 제품의 BOM에서 먼저 제거하거나, 삭제 시도 후 뜨는 "강제 삭제" 옵션을 선택하면 됩니다. (강제 삭제 시 BOM이 참조하는 재료가 빠진 상태로 남으니 주의)</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. 시트의 컬럼 순서나 이름을 바꿔도 되나요?</div>
+        <div class="a">A. 안 됩니다. 시트의 2행 헤더 이름(예: <code>id</code>, <code>재료명</code>, <code>현재재고</code>...)을 그대로 유지해야 대시보드가 인식합니다.</div>
+      </div>
+
+      <div class="faq">
+        <div class="q">Q. Apps Script를 수정하면 어떻게 다시 적용되나요?</div>
+        <div class="a">A. Apps Script 편집기에서 코드 저장 후 <b>배포 → 배포 관리 → 연필 ✏️ → 버전: 새 버전 → 배포</b>를 다시 하면 적용됩니다. 기존 웹앱 URL은 그대로 유지됩니다.</div>
+      </div>
+    </div>
+
+    <div class="card guide">
+      <h3>📦 데이터 백업</h3>
+      <p>구글시트 자체가 백업입니다. 추가로 안심하려면:</p>
+      <ul>
+        <li><b>버전 기록</b>: 시트는 모든 편집 시점 자동 저장 (파일 → 버전 기록)</li>
+        <li><b>주기적 사본</b>: 시트 메뉴 <b>파일 → 사본 만들기</b>로 월말마다 사본 저장 권장</li>
+        <li><b>다운로드</b>: <b>파일 → 다운로드 → Microsoft Excel(.xlsx)</b>로 PC에 받아두기</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 설정 탭 -->
+  <div id="tab-settings" class="tab-pane hide">
+    <div class="card" style="max-width:640px">
+      <h3>웹앱 URL</h3>
+      <p class="desc">Apps Script 배포 URL. 재배포하면 새 URL로 업데이트하세요.</p>
+      <div class="row">
+        <input id="cfgUrl">
+        <button class="primary shrink" onclick="saveCfgUrl()">저장</button>
+        <button class="shrink" onclick="testConnection()">연결 테스트</button>
+      </div>
+    </div>
+    <div class="card" style="max-width:640px">
+      <h3>기본 임계수량 (신규 재료 추가 시)</h3>
+      <p class="desc">새 재료를 추가할 때 [임계수량] 칸에 기본으로 들어가는 값. 재료별로 다시 변경 가능.</p>
+      <div class="row">
+        <input id="cfgThresh" type="number" step="any" min="0">
+        <button class="primary shrink" onclick="saveCfgThresh()">저장</button>
+      </div>
+    </div>
+    <div class="card" style="max-width:640px">
+      <h3>이력 기본 조회 일수</h3>
+      <div class="row">
+        <input id="cfgHistDays" type="number" min="1">
+        <button class="primary shrink" onclick="saveCfgHistDays()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 모달 컨테이너 -->
+<div id="modalContainer"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ============================================================
+   재고관리 대시보드 - 클라이언트 JS
+   ============================================================ */
+const LS_KEY = 'inv_apiUrl_v1';
+let apiUrl = localStorage.getItem(LS_KEY) || '';
+let state = { materials: [], products: [], bom: [], productionLog: [], stockLog: [], settings: {} };
+let selectedProductId = null;
+let activeTab = 'materials';
+
+/* ---------- API ---------- */
+async function api(action, payload = {}) {
+  if (!apiUrl) throw new Error('웹앱 URL이 설정되지 않았습니다.');
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, payload })
+  });
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); }
+  catch (e) { throw new Error('서버 응답 파싱 실패: ' + text.substring(0,200)); }
+  if (!json.ok) throw new Error(json.error || '알 수 없는 오류');
+  return json.data;
+}
+
+/* ---------- Toast ---------- */
+function toast(msg, kind='') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+/* ---------- 화면 전환 ---------- */
+function showSetup() {
+  document.getElementById('setupView').classList.remove('hide');
+  document.getElementById('mainView').classList.add('hide');
+}
+function showMain() {
+  document.getElementById('setupView').classList.add('hide');
+  document.getElementById('mainView').classList.remove('hide');
+}
+function switchTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('hide', p.id !== 'tab-' + name));
+  if (name === 'production') renderProductionForm();
+  if (name === 'stock') renderStockForm();
+  if (name === 'history') renderHistory();
+  if (name === 'settings') renderSettings();
+}
+
+/* ---------- 초기 설정 ---------- */
+async function saveSetupUrl() {
+  const url = document.getElementById('setupUrl').value.trim();
+  if (!url) { document.getElementById('setupMsg').innerHTML = '<span class="text-danger">URL을 입력하세요</span>'; return; }
+  document.getElementById('setupMsg').innerHTML = '<span class="spinner"></span> 연결 테스트 중...';
+  apiUrl = url;
+  try {
+    await api('getAll');
+    localStorage.setItem(LS_KEY, url);
+    document.getElementById('setupMsg').innerHTML = '<span class="text-success">✓ 연결 성공!</span>';
+    setTimeout(() => { showMain(); refresh(); }, 500);
+  } catch (e) {
+    document.getElementById('setupMsg').innerHTML = '<span class="text-danger">✗ ' + e.message + '</span>';
+  }
+}
+
+/* ---------- 데이터 갱신 ---------- */
+async function refresh() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 동기화...';
+  try {
+    state = await api('getAll');
+    renderAll();
+    document.getElementById('lastSync').textContent = '마지막 동기화: ' + new Date().toLocaleTimeString('ko-KR');
+  } catch (e) {
+    toast('새로고침 실패: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔄 새로고침';
+  }
+}
+
+/* ---------- 부족 알림 계산 (절대수량 기반) ----------
+ * 현재재고 < 임계수량 → 부족 (danger)
+ * 현재재고 < 임계수량 × 2 → 주의 (warning)
+ * 임계수량 미설정(0 또는 빈값) → unknown
+ */
+function classifyStock(m) {
+  const stock = Number(m['현재재고']) || 0;
+  const thr = Number(m['임계수량']) || 0;
+  if (stock <= 0) return { stock, thr, status: 'out' };
+  if (thr <= 0) return { stock, thr, status: 'unknown' };
+  if (stock < thr) return { stock, thr, status: 'danger' };
+  if (stock < thr * 2) return { stock, thr, status: 'warning' };
+  return { stock, thr, status: 'ok' };
+}
+
+/* ---------- 렌더링 ---------- */
+function renderAll() {
+  renderAlertBar();
+  renderMaterials();
+  renderProducts();
+  renderBomEditor();
+  if (activeTab === 'production') renderProductionForm();
+  if (activeTab === 'stock') renderStockForm();
+  if (activeTab === 'history') renderHistory();
+  if (activeTab === 'settings') renderSettings();
+}
+
+function renderAlertBar() {
+  const bar = document.getElementById('alertBar');
+  const danger = [], warning = [];
+  state.materials.forEach(m => {
+    const c = classifyStock(m);
+    if (c.status === 'out' || c.status === 'danger') danger.push({m, c});
+    else if (c.status === 'warning') warning.push({m, c});
+  });
+  bar.classList.toggle('has-alerts', danger.length > 0);
+  bar.classList.toggle('has-warnings', warning.length > 0);
+  let html = '';
+  if (danger.length === 0 && warning.length === 0) {
+    html = '<span class="badge success">✓ 모든 재료 정상</span>'
+      + '<span class="text-muted">총 ' + state.materials.length + '개 재료 관리 중</span>';
+  } else {
+    if (danger.length) {
+      html += '<span class="badge danger">🔴 부족 ' + danger.length + '</span>';
+      html += '<span>' + danger.slice(0,5).map(x => {
+        const unit = x.m['단위'] || '';
+        return x.m['재료명'] + ' (' + x.c.stock + unit + '/' + x.c.thr + unit + ')';
+      }).join(', ');
+      if (danger.length > 5) html += ' 외 ' + (danger.length - 5) + '개';
+      html += '</span>';
+    }
+    if (warning.length) {
+      html += '<span class="badge warning">⚠ 주의 ' + warning.length + '</span>';
+      html += '<span>' + warning.slice(0,3).map(x => x.m['재료명']).join(', ');
+      if (warning.length > 3) html += ' 외 ' + (warning.length - 3) + '개';
+      html += '</span>';
+    }
+  }
+  bar.innerHTML = html;
+}
+
+function renderMaterials() {
+  const tbody = document.querySelector('#materialsTable tbody');
+  if (!state.materials.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">등록된 재료가 없습니다. [+ 재료 추가]를 눌러 시작하세요.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.materials.map(m => {
+    const c = classifyStock(m);
+    const rowClass = (c.status === 'out' || c.status === 'danger') ? 'row-danger'
+                   : c.status === 'warning' ? 'row-warning' : '';
+    const statusBadge = c.status === 'out' ? '<span class="badge danger">소진</span>'
+                      : c.status === 'danger' ? '<span class="badge danger">부족</span>'
+                      : c.status === 'warning' ? '<span class="badge warning">주의</span>'
+                      : c.status === 'unknown' ? '<span class="badge muted">미설정</span>'
+                      : '<span class="badge success">정상</span>';
+    const imgUrl = m['이미지URL'] || '';
+    const thumb = imgUrl
+      ? `<img class="mat-thumb" src="${escapeHtml(imgUrl)}" alt="" onclick="openImagePreview('${escapeAttr(imgUrl)}','${m.id}')" onerror="this.replaceWith(makeEmptyThumb('${m.id}'))">`
+      : `<span class="mat-thumb mat-thumb-empty" onclick="pickImageForMaterial('${m.id}')" title="사진 추가">+</span>`;
+    return `<tr class="${rowClass}">
+      <td data-label="사진">${thumb}</td>
+      <td data-label="ID"><code>${escapeHtml(m.id)}</code></td>
+      <td data-label="재료명"><input class="editable" value="${escapeHtml(m['재료명']||'')}" onchange="editMaterial('${m.id}','재료명',this.value)"></td>
+      <td data-label="단위"><input class="editable" style="width:60px" value="${escapeHtml(m['단위']||'')}" onchange="editMaterial('${m.id}','단위',this.value)"></td>
+      <td data-label="현재재고" class="text-right"><input class="editable text-right" type="number" step="any" value="${m['현재재고']??0}" onchange="editMaterial('${m.id}','현재재고',Number(this.value))"></td>
+      <td data-label="임계수량" class="text-right"><input class="editable text-right" type="number" step="any" min="0" value="${m['임계수량']??0}" onchange="editMaterial('${m.id}','임계수량',Number(this.value))"></td>
+      <td data-label="상태">${statusBadge}</td>
+      <td data-label="메모"><input class="editable" style="width:160px" value="${escapeHtml(m['메모']||'')}" onchange="editMaterial('${m.id}','메모',this.value)"></td>
+      <td data-label=""><button class="ghost" onclick="deleteMaterial('${m.id}')" title="삭제">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderProducts() {
+  const tbody = document.querySelector('#productsTable tbody');
+  if (!state.products.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">등록된 제품이 없습니다.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.products.map(p => {
+    const sel = p.id === selectedProductId ? 'style="background:#EFF6FF"' : '';
+    return `<tr ${sel}>
+      <td><code>${escapeHtml(p.id)}</code></td>
+      <td><a href="#" onclick="selectProduct('${p.id}');return false">${escapeHtml(p['제품명']||'')}</a></td>
+      <td class="text-muted">${escapeHtml(p['메모']||'')}</td>
+      <td><button class="ghost" onclick="deleteProduct('${p.id}')" title="삭제">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBomEditor() {
+  const el = document.getElementById('bomEditor');
+  if (!selectedProductId) {
+    el.innerHTML = '<p class="empty">왼쪽에서 제품을 선택하세요.</p>';
+    return;
+  }
+  const prod = state.products.find(p => p.id === selectedProductId);
+  if (!prod) { el.innerHTML = '<p class="empty">제품 없음</p>'; selectedProductId = null; return; }
+  const bomRows = state.bom.filter(b => b['제품id'] === selectedProductId);
+  const matOptions = state.materials.map(m =>
+    `<option value="${m.id}">${escapeHtml(m['재료명'])} (${m.id}, ${escapeHtml(m['단위'])})</option>`).join('');
+  let rowsHtml = bomRows.map((b, idx) => {
+    const mat = state.materials.find(m => m.id === b['재료id']);
+    const matName = mat ? `${mat['재료명']} (${mat['단위']})` : `<span class="text-danger">${b['재료id']} (없음)</span>`;
+    return `<div class="bom-row" data-idx="${idx}">
+      <select class="bom-mat" data-idx="${idx}">
+        ${state.materials.map(m => `<option value="${m.id}" ${m.id===b['재료id']?'selected':''}>${escapeHtml(m['재료명'])} (${m.id})</option>`).join('')}
+      </select>
+      <input class="bom-qty" type="number" step="any" min="0" value="${b['1개당_소요량']}" data-idx="${idx}" placeholder="소요량">
+      <button class="ghost" onclick="removeBomRow(${idx})">✕</button>
+    </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="flex justify-between items-center mb-2">
+      <div><b>${escapeHtml(prod['제품명'])}</b> <code class="text-muted">${prod.id}</code></div>
+      <button class="ghost" onclick="addBomRow()">+ 재료 추가</button>
+    </div>
+    <p class="desc">제품 1개를 만들 때 소요되는 각 재료의 양을 입력하세요.</p>
+    <div id="bomRows">${rowsHtml || '<p class="text-muted">아직 등록된 재료가 없습니다.</p>'}</div>
+    <div class="mt-3 flex gap-2">
+      <button class="primary" onclick="saveBom()">BOM 저장</button>
+      <button class="ghost" onclick="renderBomEditor()">변경 취소</button>
+    </div>
+  `;
+}
+
+function selectProduct(id) { selectedProductId = id; renderProducts(); renderBomEditor(); }
+
+function addBomRow() {
+  const c = document.getElementById('bomRows');
+  if (c.querySelector('.text-muted')) c.innerHTML = '';
+  const idx = c.querySelectorAll('.bom-row').length;
+  const div = document.createElement('div');
+  div.className = 'bom-row';
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <select class="bom-mat" data-idx="${idx}">
+      ${state.materials.map(m => `<option value="${m.id}">${escapeHtml(m['재료명'])} (${m.id})</option>`).join('')}
+    </select>
+    <input class="bom-qty" type="number" step="any" min="0" value="1" data-idx="${idx}" placeholder="소요량">
+    <button class="ghost" onclick="this.parentElement.remove()">✕</button>`;
+  c.appendChild(div);
+}
+function removeBomRow(idx) {
+  const row = document.querySelector(`#bomRows .bom-row[data-idx="${idx}"]`);
+  if (row) row.remove();
+}
+async function saveBom() {
+  const items = [];
+  document.querySelectorAll('#bomRows .bom-row').forEach(row => {
+    const mat = row.querySelector('.bom-mat').value;
+    const qty = Number(row.querySelector('.bom-qty').value);
+    if (mat && qty > 0) items.push({ materialId: mat, qty });
+  });
+  try {
+    await api('setBOM', { productId: selectedProductId, items });
+    toast('BOM 저장됨', 'success');
+    await refresh();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+
+/* ---------- 재료 편집 ---------- */
+async function editMaterial(id, field, value) {
+  try {
+    const updates = {}; updates[field] = value;
+    await api('updateMaterial', { id, updates });
+    const mat = state.materials.find(m => m.id === id);
+    if (mat) mat[field] = value;
+    renderMaterials(); renderAlertBar();
+  } catch (e) { toast('수정 실패: ' + e.message, 'error'); refresh(); }
+}
+async function deleteMaterial(id) {
+  if (!confirm('정말 삭제할까요? ' + id)) return;
+  try { await api('deleteMaterial', { id }); toast('삭제됨', 'success'); await refresh(); }
+  catch (e) {
+    if (confirm(e.message + '\n\n그래도 강제 삭제할까요?')) {
+      try { await api('deleteMaterial', { id, force: true }); await refresh(); }
+      catch (e2) { toast('실패: ' + e2.message, 'error'); }
+    }
+  }
+}
+
+/* ---------- 모달 ---------- */
+function openAddMaterialModal() {
+  const defaultThr = state.settings.defaultThresholdQty ?? 10;
+  showModal(`
+    <h2>+ 새 재료 추가</h2>
+    <div class="grid-2">
+      <div><label>재료명 *</label><input id="m_name" autofocus></div>
+      <div><label>단위 *</label><input id="m_unit" placeholder="개 / m / g"></div>
+      <div><label>현재재고</label><input id="m_stock" type="number" step="any" value="0"></div>
+      <div><label>임계수량 (이 값 미만이면 부족 알림, 기본 ${defaultThr})</label><input id="m_thr" type="number" step="any" min="0" value="${defaultThr}"></div>
+      <div style="grid-column:1/-1"><label>메모</label><input id="m_memo"></div>
+    </div>
+    <div class="mt-3">
+      <label>사진 (선택)</label>
+      <input type="file" id="m_image" accept="image/*" onchange="previewModalImage(this,'m_image_preview')">
+      <img id="m_image_preview" class="modal-preview hide">
+    </div>
+    <div class="mt-3 flex gap-2 justify-between">
+      <button onclick="closeModal()">취소</button>
+      <button class="primary" onclick="submitNewMaterial()">추가</button>
+    </div>`);
+}
+async function submitNewMaterial() {
+  const name = document.getElementById('m_name').value.trim();
+  const unit = document.getElementById('m_unit').value.trim();
+  if (!name || !unit) return toast('재료명과 단위는 필수', 'error');
+  const fileInput = document.getElementById('m_image');
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  try {
+    const created = await api('addMaterial', {
+      '재료명': name, '단위': unit,
+      '현재재고': Number(document.getElementById('m_stock').value),
+      '임계수량': Number(document.getElementById('m_thr').value),
+      '메모': document.getElementById('m_memo').value
+    });
+    closeModal();
+    toast('재료 추가됨', 'success');
+    if (file && created && created.id) {
+      toast('이미지 업로드 중...');
+      try { await uploadMaterialImage(created.id, file); }
+      catch (e) { toast('이미지 업로드 실패: ' + e.message, 'error'); }
+    }
+    await refresh();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+
+function previewModalImage(input, previewId) {
+  const f = input.files && input.files[0];
+  const el = document.getElementById(previewId);
+  if (!f) { el.classList.add('hide'); return; }
+  el.src = URL.createObjectURL(f);
+  el.classList.remove('hide');
+}
+
+/* ---------- 이미지 업로드/관리 ---------- */
+function makeEmptyThumb(materialId) {
+  const s = document.createElement('span');
+  s.className = 'mat-thumb mat-thumb-empty';
+  s.textContent = '+';
+  s.title = '사진 추가';
+  s.onclick = () => pickImageForMaterial(materialId);
+  return s;
+}
+
+function pickImageForMaterial(materialId) {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    try { await uploadMaterialImage(materialId, f); await refresh(); }
+    catch (e) { toast('업로드 실패: ' + e.message, 'error'); }
+  };
+  inp.click();
+}
+
+async function uploadMaterialImage(materialId, file) {
+  const resized = await resizeImage(file, 800, 0.85);
+  const base64 = await blobToBase64(resized.blob);
+  await api('uploadImage', { materialId, mime: 'image/jpeg', data: base64 });
+  toast('이미지 저장됨', 'success');
+}
+
+function resizeImage(file, maxW, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        if (!blob) return reject(new Error('canvas-to-blob 실패'));
+        resolve({ blob, mime: 'image/jpeg' });
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => reject(new Error('이미지 로드 실패 (지원하지 않는 형식?)'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = String(r.result);
+      const i = s.indexOf(',');
+      resolve(i >= 0 ? s.substring(i + 1) : s);
+    };
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+function openImagePreview(url, materialId) {
+  const bg = document.createElement('div');
+  bg.className = 'img-preview-bg';
+  bg.onclick = (e) => { if (e.target === bg) bg.remove(); };
+  const img = document.createElement('img');
+  img.src = url;
+  bg.appendChild(img);
+  const btns = document.createElement('div');
+  btns.className = 'img-preview-btns';
+  const replace = document.createElement('button');
+  replace.textContent = '🔄 교체';
+  replace.onclick = () => { bg.remove(); pickImageForMaterial(materialId); };
+  const del = document.createElement('button');
+  del.className = 'danger';
+  del.textContent = '🗑 삭제';
+  del.onclick = async () => {
+    if (!confirm('이미지를 삭제할까요?')) return;
+    try { await api('deleteImage', { id: materialId }); bg.remove(); toast('삭제됨', 'success'); await refresh(); }
+    catch (e) { toast('실패: ' + e.message, 'error'); }
+  };
+  const close = document.createElement('button');
+  close.textContent = '✕ 닫기';
+  close.onclick = () => bg.remove();
+  btns.append(replace, del, close);
+  bg.appendChild(btns);
+  document.body.appendChild(bg);
+}
+
+function escapeAttr(s) { return String(s ?? '').replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+
+function openAddProductModal() {
+  showModal(`
+    <h2>+ 새 제품 추가</h2>
+    <div><label>제품명 *</label><input id="p_name" autofocus></div>
+    <div class="mt-3"><label>메모</label><input id="p_memo"></div>
+    <p class="desc mt-3">제품 추가 후 왼쪽 목록에서 선택해 BOM(소요 재료)을 등록하세요.</p>
+    <div class="mt-3 flex gap-2 justify-between">
+      <button onclick="closeModal()">취소</button>
+      <button class="primary" onclick="submitNewProduct()">추가</button>
+    </div>`);
+}
+async function submitNewProduct() {
+  const name = document.getElementById('p_name').value.trim();
+  if (!name) return toast('제품명은 필수', 'error');
+  try {
+    const r = await api('addProduct', { '제품명': name, '메모': document.getElementById('p_memo').value });
+    closeModal(); toast('제품 추가됨', 'success'); await refresh();
+    selectedProductId = r.id; renderProducts(); renderBomEditor();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('정말 삭제할까요? (BOM도 함께 삭제됩니다)')) return;
+  try {
+    await api('deleteProduct', { id });
+    if (selectedProductId === id) selectedProductId = null;
+    toast('삭제됨', 'success'); await refresh();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+
+function showModal(html) {
+  document.getElementById('modalContainer').innerHTML =
+    `<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
+}
+function closeModal() { document.getElementById('modalContainer').innerHTML = ''; }
+
+/* ---------- 생산 입력 ---------- */
+function renderProductionForm() {
+  const sel = document.getElementById('prodProduct');
+  sel.innerHTML = state.products.length
+    ? state.products.map(p => `<option value="${p.id}">${escapeHtml(p['제품명'])} (${p.id})</option>`).join('')
+    : '<option value="">-- 등록된 제품 없음 --</option>';
+  updateProductionPreview();
+  sel.onchange = updateProductionPreview;
+  document.getElementById('prodQty').oninput = updateProductionPreview;
+}
+function updateProductionPreview() {
+  const pid = document.getElementById('prodProduct').value;
+  const qty = Number(document.getElementById('prodQty').value || 0);
+  const wrap = document.getElementById('prodPreview');
+  if (!pid || !qty) { wrap.innerHTML = ''; return; }
+  const bom = state.bom.filter(b => b['제품id'] === pid);
+  if (!bom.length) { wrap.innerHTML = '<div class="text-warning">⚠ 이 제품에 등록된 BOM이 없습니다.</div>'; return; }
+  let html = '<div class="card" style="margin:0"><h3 style="margin:0 0 8px 0;font-size:14px">예상 차감 미리보기</h3><table><thead><tr><th>재료</th><th class="text-right">필요</th><th class="text-right">현재</th><th class="text-right">차감 후</th><th>상태</th></tr></thead><tbody>';
+  bom.forEach(b => {
+    const mat = state.materials.find(m => m.id === b['재료id']);
+    if (!mat) { html += `<tr><td colspan="5" class="text-danger">재료 없음: ${b['재료id']}</td></tr>`; return; }
+    const need = Number(b['1개당_소요량']) * qty;
+    const have = Number(mat['현재재고']);
+    const after = have - need;
+    const short = after < 0;
+    html += `<tr class="${short?'row-danger':''}">
+      <td>${escapeHtml(mat['재료명'])}</td>
+      <td class="text-right">${need} ${mat['단위']}</td>
+      <td class="text-right">${have}</td>
+      <td class="text-right ${short?'text-danger':''}">${after}</td>
+      <td>${short?'<span class="badge danger">부족</span>':'<span class="badge success">OK</span>'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+async function submitProduction(force) {
+  const pid = document.getElementById('prodProduct').value;
+  const qty = Number(document.getElementById('prodQty').value || 0);
+  const memo = document.getElementById('prodMemo').value;
+  if (!pid || qty <= 0) return toast('제품과 수량 확인', 'error');
+  try {
+    await api('addProduction', { productId: pid, qty, memo, force });
+    toast('생산 기록 추가됨 (-' + qty + ')', 'success');
+    document.getElementById('prodMemo').value = '';
+    await refresh();
+  } catch (e) {
+    if (e.message.indexOf('재료 부족') === 0) {
+      if (confirm(e.message + '\n\n재고가 마이너스가 되어도 강행할까요?')) submitProduction(true);
+    } else toast('실패: ' + e.message, 'error');
+  }
+}
+
+/* ---------- 입고/조정 ---------- */
+function renderStockForm() {
+  const sel = document.getElementById('stockMaterial');
+  sel.innerHTML = state.materials.length
+    ? state.materials.map(m => `<option value="${m.id}">${escapeHtml(m['재료명'])} (${m.id}, 현재 ${m['현재재고']}${m['단위']})</option>`).join('')
+    : '<option value="">-- 등록된 재료 없음 --</option>';
+}
+async function submitStock() {
+  const mid = document.getElementById('stockMaterial').value;
+  const amt = Number(document.getElementById('stockAmount').value || 0);
+  const type = document.getElementById('stockType').value;
+  const memo = document.getElementById('stockMemo').value;
+  if (!mid || !amt) return toast('재료와 수량 확인', 'error');
+  try {
+    await api('addStock', { materialId: mid, amount: amt, type, memo });
+    toast((amt > 0 ? '+' : '') + amt + ' 기록됨', 'success');
+    document.getElementById('stockAmount').value = 0;
+    document.getElementById('stockMemo').value = '';
+    await refresh();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+
+/* ---------- 이력 ---------- */
+function renderHistory() {
+  const type = document.getElementById('histType').value;
+  const days = Number(document.getElementById('histDays').value || 0);
+  const cutoff = days > 0 ? Date.now() - days * 86400000 : 0;
+  let rows = [];
+  if (type !== 'stock') {
+    state.productionLog.forEach(l => {
+      const t = parseTs(l['일시']);
+      if (cutoff && t < cutoff) return;
+      const prod = state.products.find(p => p.id === l['제품id']);
+      rows.push({
+        ts: t, dt: l['일시'], kind: '생산', kindKey: 'production',
+        target: (prod ? prod['제품명'] : l['제품id']) + ' (' + l['제품id'] + ')',
+        qty: '+' + l['생산수량'] + '개 생산',
+        memo: l['메모'] || '', canceled: String(l['취소여부']).toUpperCase()==='TRUE',
+        logId: l.logId
+      });
+    });
+  }
+  if (type !== 'production') {
+    state.stockLog.forEach(l => {
+      const t = parseTs(l['일시']);
+      if (cutoff && t < cutoff) return;
+      const mat = state.materials.find(m => m.id === l['재료id']);
+      rows.push({
+        ts: t, dt: l['일시'], kind: l['종류'] || '입고', kindKey: 'stock',
+        target: (mat ? mat['재료명'] : l['재료id']) + ' (' + l['재료id'] + ')',
+        qty: (Number(l['변동수량'])>0?'+':'') + l['변동수량'] + (mat?mat['단위']:''),
+        memo: l['메모'] || '', canceled: String(l['취소여부']).toUpperCase()==='TRUE',
+        logId: l.logId
+      });
+    });
+  }
+  rows.sort((a,b) => b.ts - a.ts);
+  const tbody = document.querySelector('#historyTable tbody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">표시할 이력이 없습니다.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => `<tr class="${r.canceled?'row-canceled':''}">
+    <td data-label="일시">${r.dt}</td>
+    <td data-label="구분"><span class="badge muted">${r.kind}</span></td>
+    <td data-label="대상">${escapeHtml(r.target)}</td>
+    <td data-label="수량" class="text-right">${escapeHtml(r.qty)}</td>
+    <td data-label="메모" class="text-muted">${escapeHtml(r.memo)}</td>
+    <td data-label="상태">${r.canceled ? '<span class="badge muted">취소됨</span>' : '<span class="badge success">유효</span>'}</td>
+    <td data-label="액션">${r.canceled ? '' : `<button class="ghost" onclick="undoLog('${r.kindKey}','${r.logId}')">취소</button>`}</td>
+  </tr>`).join('');
+}
+function parseTs(s) {
+  if (!s) return 0;
+  const d = new Date(String(s).replace(' ', 'T'));
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+async function undoLog(kind, logId) {
+  if (!confirm('이 기록을 취소할까요? 관련 재료 수량이 복원됩니다.')) return;
+  try {
+    await api('undoLog', { kind, logId });
+    toast('취소 처리됨', 'success'); await refresh();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+
+/* ---------- 설정 ---------- */
+function renderSettings() {
+  document.getElementById('cfgUrl').value = apiUrl;
+  document.getElementById('cfgThresh').value = state.settings.defaultThresholdQty ?? 10;
+  document.getElementById('cfgHistDays').value = state.settings.recentHistoryDays ?? 30;
+}
+function saveCfgUrl() {
+  const u = document.getElementById('cfgUrl').value.trim();
+  if (!u) return toast('URL을 입력하세요', 'error');
+  apiUrl = u; localStorage.setItem(LS_KEY, u);
+  toast('URL 저장됨', 'success'); refresh();
+}
+async function testConnection() {
+  try { await api('getAll'); toast('✓ 연결 OK', 'success'); }
+  catch (e) { toast('✗ ' + e.message, 'error'); }
+}
+async function saveCfgThresh() {
+  try {
+    const v = Number(document.getElementById('cfgThresh').value);
+    await api('updateSetting', { key: 'defaultThresholdQty', value: v, desc: '신규 재료 추가 시 기본 임계수량' });
+    toast('저장됨', 'success'); await refresh();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+async function saveCfgHistDays() {
+  try {
+    const v = Number(document.getElementById('cfgHistDays').value);
+    await api('updateSetting', { key: 'recentHistoryDays', value: v, desc: '대시보드 이력 탭 기본 조회 일수' });
+    toast('저장됨', 'success'); await refresh();
+  } catch (e) { toast('실패: ' + e.message, 'error'); }
+}
+
+/* ---------- 유틸 ---------- */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- 부팅 ---------- */
+(function boot() {
+  if (apiUrl) { showMain(); refresh(); }
+  else showSetup();
+})();
+</script>
+
+</body>
+</html>

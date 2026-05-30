@@ -1,0 +1,22 @@
+# Office lock files
+~$*
+
+# macOS metadata
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+
+# Local secrets / credentials — 절대 커밋 금지
+.env
+secrets.json
+*credential*.json
+*service-account*.json
+my-project-*.json
+*-key.json
+gha-creds-*.json
