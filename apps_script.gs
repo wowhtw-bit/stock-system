@@ -170,6 +170,7 @@ function addMaterial_(p) {
       '현재재고': Number(p['현재재고'] !== undefined ? p['현재재고'] : (p.stock || 0)),
       '임계수량': Number(p['임계수량'] !== undefined ? p['임계수량'] : (p.thresholdQty !== undefined ? p.thresholdQty : defaultThresh)),
       '메모': p['메모'] || p.memo || '',
+      '그룹': p['그룹'] || p.group || '',
       '이미지URL': p['이미지URL'] || p.imageUrl || ''
     };
     t.sheet.appendRow(rowToArray_(t.headers, newRow));
@@ -526,4 +527,32 @@ function migrate_v2_threshold() {
   }
 
   SpreadsheetApp.getUi().alert('✓ 마이그레이션 완료\n\n변경 사항:\n  - Materials.임계치% → 임계수량\n  - 값 자동 변환 (기준재고 × % / 100)\n  - Settings.defaultThresholdQty 설정\n\n기준재고 컬럼은 더 이상 사용하지 않으므로 그대로 두거나 수동 삭제하셔도 됩니다.');
+}
+
+/* ====== 마이그레이션 v3: Materials에 '그룹' 컬럼 추가 ======
+ * 사용법: Apps Script 편집기 함수 박스에서 "migrate_v3_group" 선택 후 ▶️ 실행. 1회만.
+ * 멱등: 이미 컬럼이 있으면 안내만 표시하고 종료.
+ */
+function migrate_v3_group() {
+  var sh = ss_().getSheetByName(SHEETS.M);
+  if (!sh) throw new Error('Materials 시트를 찾을 수 없습니다.');
+  var lastCol = sh.getLastColumn();
+  var headers = sh.getRange(2, 1, 1, lastCol).getValues()[0]
+    .map(function (h) { return String(h || '').trim(); });
+
+  if (headers.indexOf('그룹') >= 0) {
+    SpreadsheetApp.getUi().alert('이미 적용된 시트입니다. (그룹 컬럼이 이미 존재)');
+    return;
+  }
+
+  // '이미지URL' 앞에 삽입하면 시트 가독성이 좋지만, 컬럼 삽입은 데이터 이동을 동반.
+  // 단순히 끝(마지막 컬럼 +1)에 헤더만 추가 — readSheet_는 헤더명 기반이라 위치 무관.
+  var newColIdx = lastCol + 1;
+  sh.getRange(2, newColIdx).setValue('그룹');
+  // 1행이 안내문 영역이면 같은 줄도 비워둠 (Materials는 1행 안내 사용 안 할 수 있음)
+  SpreadsheetApp.getUi().alert(
+    '✓ 마이그레이션 완료\n\nMaterials 시트 마지막 컬럼에 "그룹" 헤더가 추가되었습니다.\n' +
+    '값이 비어있는 행은 대시보드에서 재료명으로 자동 그룹화됩니다.\n' +
+    '필요하면 시트에서 컬럼을 원하는 위치로 드래그해 옮겨도 됩니다.'
+  );
 }

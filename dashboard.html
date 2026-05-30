@@ -39,6 +39,8 @@
   tr.row-danger td{background:var(--danger-soft)}
   tr.row-warning td{background:var(--warning-soft)}
   tr.row-canceled td{opacity:.45;text-decoration:line-through}
+  tr.group-header td{background:#EFF6FF;color:var(--primary);font-weight:600;font-size:13px;padding:10px 12px;border-bottom:2px solid #DBEAFE}
+  tr.group-header:hover td{background:#EFF6FF}
 
   .layout{max-width:1280px;margin:0 auto;padding:24px}
   .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
@@ -193,18 +195,24 @@
     #materialsTable td:nth-child(3)::before { display: none; }
     #materialsTable td:nth-child(3) input { font-size: 17px; font-weight: 600; padding: 4px 0; min-height: 32px; border-color: transparent; }
     #materialsTable td:nth-child(3) input:focus { border-color: var(--primary); padding: 4px 8px; }
-    /* 단위/현재재고/임계수량/상태/메모 — 전체 너비, 라벨 표시 */
-    #materialsTable td:nth-child(n+4):nth-child(-n+8) {
+    /* 그룹/단위/현재재고/임계수량/상태/메모 — 전체 너비, 라벨 표시 */
+    #materialsTable td:nth-child(n+4):nth-child(-n+9) {
       grid-column: 1 / -1; padding: 8px 0;
       border-top: 1px solid var(--border);
     }
-    #materialsTable td:nth-child(4) input { width: 60px !important; }
-    #materialsTable td:nth-child(5) input,
-    #materialsTable td:nth-child(6) input { width: 100px !important; font-size: 17px; font-weight: 500; }
-    #materialsTable td:nth-child(8) input { flex: 1; }
+    #materialsTable td:nth-child(4) input { width: 140px !important; }
+    #materialsTable td:nth-child(5) input { width: 60px !important; }
+    #materialsTable td:nth-child(6) input,
+    #materialsTable td:nth-child(7) input { width: 100px !important; font-size: 17px; font-weight: 500; }
+    #materialsTable td:nth-child(9) input { flex: 1; }
     /* 삭제 버튼 */
-    #materialsTable td:nth-child(9) { grid-column: 1 / -1; justify-content: flex-end; padding-top: 4px; }
-    #materialsTable td:nth-child(9)::before { display: none; }
+    #materialsTable td:nth-child(10) { grid-column: 1 / -1; justify-content: flex-end; padding-top: 4px; }
+    #materialsTable td:nth-child(10)::before { display: none; }
+
+    /* 그룹 헤더 행은 모바일에서도 전체 너비 */
+    #materialsTable tr.group-header { display: block; padding: 8px 4px; margin: 14px 0 4px; background: transparent !important; border: none; box-shadow: none; border-radius: 0; }
+    #materialsTable tr.group-header td { padding: 0; border: none; }
+    #materialsTable tr.group-header td::before { display: none; }
 
     .mat-thumb { width: 76px; height: 76px; }
     .mat-thumb-empty { font-size: 28px; }
@@ -359,17 +367,23 @@
   <!-- 재료 현황 탭 -->
   <div id="tab-materials" class="tab-pane">
     <div class="card">
-      <div class="flex justify-between items-center mb-2">
+      <div class="flex justify-between items-center mb-2" style="flex-wrap:wrap;gap:8px">
         <h3 style="margin:0">재료 목록</h3>
-        <button class="primary" onclick="openAddMaterialModal()">+ 재료 추가</button>
+        <div class="flex items-center gap-2" style="gap:8px">
+          <label style="margin:0;font-size:12px;color:var(--muted)">그룹</label>
+          <select id="materialGroupFilter" style="width:auto;min-width:120px" onchange="onGroupFilterChange(this.value)">
+            <option value="">전체</option>
+          </select>
+          <button class="primary" onclick="openAddMaterialModal()">+ 재료 추가</button>
+        </div>
       </div>
-      <p class="desc">현재재고가 임계수량보다 적으면 빨간 행으로 표시됩니다. 셀을 직접 수정 후 Enter 또는 다른 곳 클릭 시 자동 저장됩니다.</p>
+      <p class="desc">현재재고가 임계수량보다 적으면 빨간 행으로 표시됩니다. 셀을 직접 수정 후 Enter 또는 다른 곳 클릭 시 자동 저장됩니다. 그룹 칸을 비우면 재료명에서 자동으로 추론됩니다.</p>
       <div style="overflow-x:auto">
         <table id="materialsTable">
           <thead>
             <tr>
               <th style="width:48px">사진</th>
-              <th>ID</th><th>재료명</th><th>단위</th>
+              <th>ID</th><th>재료명</th><th>그룹</th><th>단위</th>
               <th class="text-right">현재재고</th>
               <th class="text-right">임계수량</th>
               <th>상태</th><th>메모</th><th></th>
@@ -733,6 +747,7 @@ let apiUrl = localStorage.getItem(LS_KEY) || DEFAULT_API_URL;
 let state = { materials: [], products: [], bom: [], productionLog: [], stockLog: [], settings: {} };
 let selectedProductId = null;
 let activeTab = 'materials';
+let activeGroupFilter = '';
 
 /* ---------- API ---------- */
 async function api(action, payload = {}) {
@@ -818,6 +833,28 @@ async function refresh() {
  * 현재재고 < 임계수량 × 2 → 주의 (warning)
  * 임계수량 미설정(0 또는 빈값) → unknown
  */
+/* ---------- 그룹 ---------- */
+function extractGroup(name) {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  const first = s.split(/[\s\-_\/,·]+/)[0];
+  const m = first.match(/^([가-힣]+)(?=[0-9A-Za-z])/);
+  return (m ? m[1] : first) || s;
+}
+function materialGroup(m) {
+  const explicit = String(m['그룹'] || '').trim();
+  return explicit || extractGroup(m['재료명']) || '(미분류)';
+}
+function groupMaterials(list) {
+  const map = new Map();
+  list.forEach(m => {
+    const g = materialGroup(m);
+    if (!map.has(g)) map.set(g, []);
+    map.get(g).push(m);
+  });
+  return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'));
+}
+
 function classifyStock(m) {
   const stock = Number(m['현재재고']) || 0;
   const thr = Number(m['임계수량']) || 0;
@@ -840,6 +877,27 @@ function renderAll() {
   if (activeTab === 'settings') renderSettings();
 }
 
+function summarizeByGroup(items) {
+  // items: [{m, c}] — 그룹명별로 개수 집계, 가나다순 정렬
+  const counts = new Map();
+  items.forEach(x => {
+    const g = materialGroup(x.m);
+    counts.set(g, (counts.get(g) || 0) + 1);
+  });
+  return Array.from(counts.entries())
+    .sort((a, b) => a[0].localeCompare(b[0], 'ko'))
+    .map(([g, n]) => `<a href="#" onclick="filterByGroup('${escapeAttr(g)}');return false" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">${escapeHtml(g)} ${n}개</a>`)
+    .join(' · ');
+}
+
+function filterByGroup(g) {
+  activeGroupFilter = g;
+  switchTab('materials');
+  const sel = document.getElementById('materialGroupFilter');
+  if (sel) sel.value = g;
+  renderMaterials();
+}
+
 function renderAlertBar() {
   const bar = document.getElementById('alertBar');
   const danger = [], warning = [];
@@ -857,30 +915,55 @@ function renderAlertBar() {
   } else {
     if (danger.length) {
       html += '<span class="badge danger">🔴 부족 ' + danger.length + '</span>';
-      html += '<span>' + danger.slice(0,5).map(x => {
-        const unit = x.m['단위'] || '';
-        return x.m['재료명'] + ' (' + x.c.stock + unit + '/' + x.c.thr + unit + ')';
-      }).join(', ');
-      if (danger.length > 5) html += ' 외 ' + (danger.length - 5) + '개';
-      html += '</span>';
+      html += '<span>' + summarizeByGroup(danger) + '</span>';
     }
     if (warning.length) {
       html += '<span class="badge warning">⚠ 주의 ' + warning.length + '</span>';
-      html += '<span>' + warning.slice(0,3).map(x => x.m['재료명']).join(', ');
-      if (warning.length > 3) html += ' 외 ' + (warning.length - 3) + '개';
-      html += '</span>';
+      html += '<span>' + summarizeByGroup(warning) + '</span>';
     }
   }
   bar.innerHTML = html;
 }
 
+function onGroupFilterChange(v) {
+  activeGroupFilter = v || '';
+  renderMaterials();
+}
+
+function rebuildGroupFilterOptions(allGroups) {
+  const sel = document.getElementById('materialGroupFilter');
+  if (!sel) return;
+  const current = activeGroupFilter;
+  const opts = ['<option value="">전체</option>']
+    .concat(allGroups.map(g => `<option value="${escapeAttr(g)}"${g === current ? ' selected' : ''}>${escapeHtml(g)}</option>`));
+  sel.innerHTML = opts.join('');
+  // 선택돼 있던 그룹이 더 이상 없으면 전체로 복귀
+  if (current && !allGroups.includes(current)) {
+    activeGroupFilter = '';
+    sel.value = '';
+  }
+}
+
 function renderMaterials() {
   const tbody = document.querySelector('#materialsTable tbody');
+  const grouped = groupMaterials(state.materials);
+  rebuildGroupFilterOptions(grouped.map(([g]) => g));
+
   if (!state.materials.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty">등록된 재료가 없습니다. [+ 재료 추가]를 눌러 시작하세요.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty">등록된 재료가 없습니다. [+ 재료 추가]를 눌러 시작하세요.</td></tr>';
     return;
   }
-  tbody.innerHTML = state.materials.map(m => {
+
+  const filtered = activeGroupFilter
+    ? grouped.filter(([g]) => g === activeGroupFilter)
+    : grouped;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">"${escapeHtml(activeGroupFilter)}" 그룹에 속한 재료가 없습니다.</td></tr>`;
+    return;
+  }
+
+  const rowHtml = (m) => {
     const c = classifyStock(m);
     const rowClass = (c.status === 'out' || c.status === 'danger') ? 'row-danger'
                    : c.status === 'warning' ? 'row-warning' : '';
@@ -893,10 +976,13 @@ function renderMaterials() {
     const thumb = imgUrl
       ? `<img class="mat-thumb" src="${escapeHtml(imgUrl)}" alt="" onclick="openImagePreview('${escapeAttr(imgUrl)}','${m.id}')" onerror="this.replaceWith(makeEmptyThumb('${m.id}'))">`
       : `<span class="mat-thumb mat-thumb-empty" onclick="pickImageForMaterial('${m.id}')" title="사진 추가">+</span>`;
+    const groupVal = String(m['그룹'] || '');
+    const groupPlaceholder = extractGroup(m['재료명']) || '(미분류)';
     return `<tr class="${rowClass}">
       <td data-label="사진">${thumb}</td>
       <td data-label="ID"><code>${escapeHtml(m.id)}</code></td>
       <td data-label="재료명"><input class="editable" value="${escapeHtml(m['재료명']||'')}" onchange="editMaterial('${m.id}','재료명',this.value)"></td>
+      <td data-label="그룹"><input class="editable" style="width:120px" value="${escapeHtml(groupVal)}" placeholder="${escapeAttr(groupPlaceholder)}" title="비워두면 재료명에서 자동 추론" onchange="editMaterial('${m.id}','그룹',this.value)"></td>
       <td data-label="단위"><input class="editable" style="width:60px" value="${escapeHtml(m['단위']||'')}" onchange="editMaterial('${m.id}','단위',this.value)"></td>
       <td data-label="현재재고" class="text-right"><input class="editable text-right" type="number" step="any" value="${m['현재재고']??0}" onchange="editMaterial('${m.id}','현재재고',Number(this.value))"></td>
       <td data-label="임계수량" class="text-right"><input class="editable text-right" type="number" step="any" min="0" value="${m['임계수량']??0}" onchange="editMaterial('${m.id}','임계수량',Number(this.value))"></td>
@@ -904,6 +990,11 @@ function renderMaterials() {
       <td data-label="메모"><input class="editable" style="width:160px" value="${escapeHtml(m['메모']||'')}" onchange="editMaterial('${m.id}','메모',this.value)"></td>
       <td data-label=""><button class="ghost" onclick="deleteMaterial('${m.id}')" title="삭제">🗑</button></td>
     </tr>`;
+  };
+
+  tbody.innerHTML = filtered.map(([groupName, items]) => {
+    const header = `<tr class="group-header"><td colspan="10">📦 ${escapeHtml(groupName)} <span class="text-muted" style="font-weight:400">(${items.length}개)</span></td></tr>`;
+    return header + items.map(rowHtml).join('');
   }).join('');
 }
 
@@ -1022,7 +1113,8 @@ function openAddMaterialModal() {
   showModal(`
     <h2>+ 새 재료 추가</h2>
     <div class="grid-2">
-      <div><label>재료명 *</label><input id="m_name" autofocus></div>
+      <div><label>재료명 *</label><input id="m_name" autofocus oninput="suggestGroupFromName()"></div>
+      <div><label>그룹 (비우면 재료명에서 자동 추론)</label><input id="m_group" placeholder="자동"></div>
       <div><label>단위 *</label><input id="m_unit" placeholder="개 / m / g"></div>
       <div><label>현재재고</label><input id="m_stock" type="number" step="any" value="0"></div>
       <div><label>임계수량 (이 값 미만이면 부족 알림, 기본 ${defaultThr})</label><input id="m_thr" type="number" step="any" min="0" value="${defaultThr}"></div>
@@ -1038,6 +1130,13 @@ function openAddMaterialModal() {
       <button class="primary" onclick="submitNewMaterial()">추가</button>
     </div>`);
 }
+function suggestGroupFromName() {
+  const nameEl = document.getElementById('m_name');
+  const groupEl = document.getElementById('m_group');
+  if (!nameEl || !groupEl) return;
+  groupEl.placeholder = extractGroup(nameEl.value) || '자동';
+}
+
 async function submitNewMaterial() {
   const name = document.getElementById('m_name').value.trim();
   const unit = document.getElementById('m_unit').value.trim();
@@ -1049,7 +1148,8 @@ async function submitNewMaterial() {
       '재료명': name, '단위': unit,
       '현재재고': Number(document.getElementById('m_stock').value),
       '임계수량': Number(document.getElementById('m_thr').value),
-      '메모': document.getElementById('m_memo').value
+      '메모': document.getElementById('m_memo').value,
+      '그룹': document.getElementById('m_group').value.trim()
     });
     closeModal();
     toast('재료 추가됨', 'success');
