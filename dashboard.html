@@ -991,13 +991,13 @@ function renderMaterials() {
     return `<tr class="${rowClass}">
       <td data-label="사진">${thumb}</td>
       <td data-label="ID"><code>${escapeHtml(m.id)}</code></td>
-      <td data-label="재료명"><input class="editable" value="${escapeHtml(m['재료명']||'')}" onchange="editMaterial('${m.id}','재료명',this.value)"></td>
-      <td data-label="그룹"><input class="editable" style="width:120px" value="${escapeHtml(groupVal)}" placeholder="${escapeAttr(groupPlaceholder)}" title="비워두면 재료명에서 자동 추론" onchange="editMaterial('${m.id}','그룹',this.value)"></td>
-      <td data-label="단위"><input class="editable" style="width:60px" value="${escapeHtml(m['단위']||'')}" onchange="editMaterial('${m.id}','단위',this.value)"></td>
-      <td data-label="현재재고" class="text-right"><input class="editable text-right" type="number" step="any" value="${m['현재재고']??0}" onchange="editMaterial('${m.id}','현재재고',Number(this.value))"></td>
-      <td data-label="임계수량" class="text-right"><input class="editable text-right" type="number" step="any" min="0" value="${m['임계수량']??0}" onchange="editMaterial('${m.id}','임계수량',Number(this.value))"></td>
+      <td data-label="재료명"><input class="editable" style="width:220px" value="${escapeHtml(m['재료명']||'')}" onchange="editMaterial('${m.id}','재료명',this.value)"></td>
+      <td data-label="그룹"><input class="editable" style="width:90px" value="${escapeHtml(groupVal)}" placeholder="${escapeAttr(groupPlaceholder)}" title="비워두면 재료명에서 자동 추론" onchange="editMaterial('${m.id}','그룹',this.value)"></td>
+      <td data-label="단위"><input class="editable" style="width:50px" value="${escapeHtml(m['단위']||'')}" onchange="editMaterial('${m.id}','단위',this.value)"></td>
+      <td data-label="현재재고" class="text-right"><input class="editable text-right" style="width:70px" type="number" step="any" value="${m['현재재고']??0}" onchange="editMaterial('${m.id}','현재재고',Number(this.value))"></td>
+      <td data-label="임계수량" class="text-right"><input class="editable text-right" style="width:70px" type="number" step="any" min="0" value="${m['임계수량']??0}" onchange="editMaterial('${m.id}','임계수량',Number(this.value))"></td>
       <td data-label="상태">${statusBadge}</td>
-      <td data-label="메모"><input class="editable" style="width:160px" value="${escapeHtml(m['메모']||'')}" onchange="editMaterial('${m.id}','메모',this.value)"></td>
+      <td data-label="메모"><input class="editable" style="width:120px" value="${escapeHtml(m['메모']||'')}" onchange="editMaterial('${m.id}','메모',this.value)"></td>
       <td data-label=""><button class="ghost" onclick="deleteMaterial('${m.id}')" title="삭제">🗑</button></td>
     </tr>`;
   };
