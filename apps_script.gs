@@ -403,17 +403,35 @@ function updateSetting_(p) {
 }
 
 /* ====== 이미지 업로드 ====== */
+// 이미지 폴더를 둘 부모 폴더 ID. 비우면 Drive 최상위(기존 동작).
+var IMAGE_PARENT_FOLDER_ID = '1qRskO6Ok_faGgmEImYJLRULX4MwaIfRk';
+
 function getOrCreateImageFolder_() {
   var props = PropertiesService.getScriptProperties();
   var fid = props.getProperty('imageFolderId');
   if (fid) {
     try {
-      var f = DriveApp.getFolderById(fid);
-      if (!f.isTrashed()) return f;
+      var cached = DriveApp.getFolderById(fid);
+      if (!cached.isTrashed()) {
+        // 부모 폴더가 지정돼 있고 캐시 폴더가 거기 하위가 아니면 무시(아래에서 재탐색/생성).
+        if (!IMAGE_PARENT_FOLDER_ID) return cached;
+        var parents = cached.getParents();
+        while (parents.hasNext()) {
+          if (parents.next().getId() === IMAGE_PARENT_FOLDER_ID) return cached;
+        }
+      }
     } catch (e) { /* 폴더 없어짐 - 재생성 */ }
   }
-  var iter = DriveApp.getFoldersByName('재고관리_이미지');
-  var folder = iter.hasNext() ? iter.next() : DriveApp.createFolder('재고관리_이미지');
+
+  var folder;
+  if (IMAGE_PARENT_FOLDER_ID) {
+    var parent = DriveApp.getFolderById(IMAGE_PARENT_FOLDER_ID);
+    var sub = parent.getFoldersByName('재고관리_이미지');
+    folder = sub.hasNext() ? sub.next() : parent.createFolder('재고관리_이미지');
+  } else {
+    var iter = DriveApp.getFoldersByName('재고관리_이미지');
+    folder = iter.hasNext() ? iter.next() : DriveApp.createFolder('재고관리_이미지');
+  }
   props.setProperty('imageFolderId', folder.getId());
   return folder;
 }
