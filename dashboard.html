@@ -837,9 +837,19 @@ async function refresh() {
 function extractGroup(name) {
   const s = String(name || '').trim();
   if (!s) return '';
-  const first = s.split(/[\s\-_\/,·]+/)[0];
-  const m = first.match(/^([가-힣]+)(?=[0-9A-Za-z])/);
-  return (m ? m[1] : first) || s;
+  // 가장 뒤 토큰부터 보되, 단위/숫자만 있는 토큰("10mm", "5g")은 건너뛰고
+  // 의미있는 토큰(한글 또는 영문이 1자 이상 포함)을 채택.
+  const tokens = s.split(/[\s\-_\/,·]+/).filter(Boolean);
+  if (!tokens.length) return s;
+  const SIZE = /^[\d.]+(mm|cm|m|g|kg|ml|l|개|호|in|"|')?$/i;
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const t = tokens[i];
+    if (SIZE.test(t)) continue;
+    // 끝부분에 붙은 영숫자/단위 제거 ("단추10mm" → "단추")
+    const m = t.match(/^([가-힣A-Za-z]+)/);
+    return (m ? m[1] : t) || t;
+  }
+  return tokens[tokens.length - 1];
 }
 function materialGroup(m) {
   const explicit = String(m['그룹'] || '').trim();
