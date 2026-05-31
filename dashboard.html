@@ -42,12 +42,12 @@
   tr.group-header td{background:#EFF6FF;color:var(--primary);font-weight:600;font-size:13px;padding:10px 12px;border-bottom:2px solid #DBEAFE}
   tr.group-header:hover td{background:#EFF6FF}
 
-  .layout{max-width:1280px;margin:0 auto;padding:24px}
+  .layout{max-width:1280px;margin:0 auto;padding:16px 24px}
   .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
   .header h1{margin:0;font-size:22px}
   .header .toolbar{display:flex;gap:8px;align-items:center}
-  .alert-bar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;
-    margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .alert-bar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;
+    margin-bottom:10px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
   .alert-bar.has-alerts{background:var(--danger-soft);border-color:#FCA5A5}
   .alert-bar.has-warnings:not(.has-alerts){background:var(--warning-soft);border-color:#FCD34D}
   .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600}
@@ -56,15 +56,15 @@
   .badge.muted{background:#E5E7EB;color:#374151}
   .badge.success{background:var(--success);color:#fff}
 
-  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:10px}
   .tab{padding:10px 16px;border:none;background:transparent;border-bottom:2px solid transparent;
     color:var(--muted);font-weight:500;border-radius:0;font-size:14px}
   .tab:hover{color:var(--text);background:transparent}
   .tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
   .card h3{margin:0 0 12px 0;font-size:16px}
-  .card .desc{color:var(--muted);font-size:13px;margin-bottom:14px}
+  .card .desc{color:var(--muted);font-size:13px;margin-bottom:8px}
 
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
@@ -273,8 +273,8 @@
   }
 
   /* Material thumbnail */
-  .mat-thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border);background:#F3F4F6;display:inline-block;vertical-align:middle}
-  .mat-thumb-empty{display:inline-flex;align-items:center;justify-content:center;color:var(--subtle);font-size:20px;font-weight:300}
+  .mat-thumb{width:30px;height:30px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border);background:#F3F4F6;display:inline-block;vertical-align:middle}
+  .mat-thumb-empty{display:inline-flex;align-items:center;justify-content:center;color:var(--subtle);font-size:15px;font-weight:300}
   .mat-thumb-empty:hover{background:#E5E7EB;color:var(--primary);border-color:var(--primary)}
   .img-preview-bg{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:300;cursor:zoom-out}
   .img-preview-bg img{max-width:92vw;max-height:88vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
@@ -307,6 +307,17 @@
   .bom-row{display:grid;grid-template-columns:1fr 120px 40px;gap:8px;align-items:center;margin-bottom:6px}
   .summary-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
   .summary-list .badge{cursor:default}
+
+  /* ============================================================
+     데스크톱 전용 재료 테이블 압축 (노트북에서 더 많은 행 표시)
+     — 모바일(≤720px) 카드 레이아웃을 덮지 않도록 min-width로 격리
+     ============================================================ */
+  @media (min-width: 721px) {
+    #materialsTable td { padding:3px 10px; }
+    #materialsTable th { padding:5px 10px; }
+    #materialsTable .editable { padding:2px 6px; }
+    #materialsTable tr.group-header td { padding:4px 12px; }
+  }
 </style>
 </head>
 <body>
@@ -373,6 +384,15 @@
           <label style="margin:0;font-size:12px;color:var(--muted)">그룹</label>
           <select id="materialGroupFilter" style="width:auto;min-width:120px" onchange="onGroupFilterChange(this.value)">
             <option value="">전체</option>
+          </select>
+          <label style="margin:0;font-size:12px;color:var(--muted)">상태</label>
+          <select id="materialStatusFilter" style="width:auto;min-width:96px" onchange="onStatusFilterChange(this.value)">
+            <option value="">전체</option>
+            <option value="out">소진</option>
+            <option value="danger">부족</option>
+            <option value="warning">주의</option>
+            <option value="ok">정상</option>
+            <option value="unknown">미설정</option>
           </select>
           <button class="primary" onclick="openAddMaterialModal()">+ 재료 추가</button>
         </div>
@@ -748,6 +768,7 @@ let state = { materials: [], products: [], bom: [], productionLog: [], stockLog:
 let selectedProductId = null;
 let activeTab = 'materials';
 let activeGroupFilter = '';
+let activeStatusFilter = '';
 
 /* ---------- API ---------- */
 async function api(action, payload = {}) {
@@ -862,7 +883,36 @@ function groupMaterials(list) {
     if (!map.has(g)) map.set(g, []);
     map.get(g).push(m);
   });
-  return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ko'));
+  const order = getGroupOrder();
+  return Array.from(map.entries()).sort((a, b) => {
+    const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
+    if (ia !== -1 && ib !== -1) return ia - ib;   // 둘 다 저장 순서 → 그 순서대로
+    if (ia !== -1) return -1;                      // 저장된 그룹을 앞으로
+    if (ib !== -1) return 1;
+    return a[0].localeCompare(b[0], 'ko');         // 나머지는 가나다순
+  });
+}
+
+/* ---------- 그룹 순서 (Settings 시트에 공유 저장) ---------- */
+function getGroupOrder() {
+  const v = state.settings.groupOrder;
+  if (Array.isArray(v)) return v;
+  if (!v) return [];
+  try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function saveGroupOrder(names) {
+  state.settings.groupOrder = JSON.stringify(names);  // 낙관적 적용
+  renderMaterials();
+  api('updateSetting', { key: 'groupOrder', value: JSON.stringify(names), desc: '재료 그룹 표시 순서' })
+    .catch(e => toast('그룹 순서 저장 실패: ' + e.message, 'error'));
+}
+function moveGroup(name, dir) {
+  const names = groupMaterials(state.materials).map(([g]) => g);
+  const i = names.indexOf(name), j = i + dir;
+  if (i < 0 || j < 0 || j >= names.length) return;
+  [names[i], names[j]] = [names[j], names[i]];
+  saveGroupOrder(names);
 }
 
 function classifyStock(m) {
@@ -940,6 +990,11 @@ function onGroupFilterChange(v) {
   renderMaterials();
 }
 
+function onStatusFilterChange(v) {
+  activeStatusFilter = v || '';
+  renderMaterials();
+}
+
 function rebuildGroupFilterOptions(allGroups) {
   const sel = document.getElementById('materialGroupFilter');
   if (!sel) return;
@@ -964,12 +1019,17 @@ function renderMaterials() {
     return;
   }
 
-  const filtered = activeGroupFilter
+  let filtered = activeGroupFilter
     ? grouped.filter(([g]) => g === activeGroupFilter)
     : grouped;
+  if (activeStatusFilter) {
+    filtered = filtered
+      .map(([g, items]) => [g, items.filter(m => classifyStock(m).status === activeStatusFilter)])
+      .filter(([, items]) => items.length);
+  }
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">"${escapeHtml(activeGroupFilter)}" 그룹에 속한 재료가 없습니다.</td></tr>`;
+    tbody.innerHTML = '<tr><td colspan="10" class="empty">조건에 맞는 재료가 없습니다.</td></tr>';
     return;
   }
 
@@ -1002,8 +1062,13 @@ function renderMaterials() {
     </tr>`;
   };
 
-  tbody.innerHTML = filtered.map(([groupName, items]) => {
-    const header = `<tr class="group-header"><td colspan="10">📦 ${escapeHtml(groupName)} <span class="text-muted" style="font-weight:400">(${items.length}개)</span></td></tr>`;
+  const canReorder = !activeGroupFilter && !activeStatusFilter && filtered.length > 1;
+  tbody.innerHTML = filtered.map(([groupName, items], gi) => {
+    const arrows = canReorder ? `<span style="float:right;white-space:nowrap">
+        <button class="ghost" ${gi === 0 ? 'disabled' : ''} onclick="moveGroup('${escapeAttr(groupName)}',-1)" title="위로">▲</button>
+        <button class="ghost" ${gi === filtered.length - 1 ? 'disabled' : ''} onclick="moveGroup('${escapeAttr(groupName)}',1)" title="아래로">▼</button>
+      </span>` : '';
+    const header = `<tr class="group-header"><td colspan="10">📦 ${escapeHtml(groupName)} <span class="text-muted" style="font-weight:400">(${items.length}개)</span>${arrows}</td></tr>`;
     return header + items.map(rowHtml).join('');
   }).join('');
 }
